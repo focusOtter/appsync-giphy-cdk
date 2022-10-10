@@ -2,18 +2,13 @@ import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import * as appsync from '@aws-cdk/aws-appsync-alpha'
 import * as path from 'path'
-import {
-	ServicePrincipal,
-	Role,
-	PolicyDocument,
-	PolicyStatement,
-	ArnPrincipal,
-} from 'aws-cdk-lib/aws-iam'
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam'
 
 export class APIStack extends cdk.Stack {
 	constructor(scope: Construct, id: string, props?: cdk.StackProps) {
 		super(scope, id, props)
 
+		//create our API
 		const api = new appsync.GraphqlApi(this, 'Api', {
 			name: 'apiSecret',
 			schema: appsync.Schema.fromAsset(path.join(__dirname, 'schema.graphql')),
@@ -31,6 +26,12 @@ export class APIStack extends cdk.Stack {
 			xrayEnabled: true,
 		})
 
+		// Create our 2 datasources
+
+		// The Giphy API
+		const giphyDS = api.addHttpDataSource('toGiphyAPI', 'https://api.giphy.com')
+
+		// Secrets Manager
 		const ssmDS = api.addHttpDataSource(
 			'toSecretManager',
 			'https://secretsmanager.us-east-1.amazonaws.com',
@@ -42,7 +43,7 @@ export class APIStack extends cdk.Stack {
 			}
 		)
 
-		const giphyDS = api.addHttpDataSource('toGiphyAPI', 'https://api.giphy.com')
+		// policy to permit an http datasource to get a secret in Secrets Manager
 
 		ssmDS.grantPrincipal.addToPrincipalPolicy(
 			new PolicyStatement({
@@ -53,6 +54,7 @@ export class APIStack extends cdk.Stack {
 			})
 		)
 
+		// Create a function that gets the secret
 		const appSyncFunction = new appsync.AppsyncFunction(
 			this,
 			'getSecretFromSSM',
@@ -69,6 +71,7 @@ export class APIStack extends cdk.Stack {
 			}
 		)
 
+		// Create a function that will get the Gifs from the API
 		const getGifsFunction = new appsync.AppsyncFunction(
 			this,
 			'getGifsFromGiphy',
@@ -85,6 +88,7 @@ export class APIStack extends cdk.Stack {
 			}
 		)
 
+		// Create a pipeline that has a "before" and "after" step + our fns
 		const myPipelineResolver = new appsync.Resolver(this, 'mySecretPipeline', {
 			api,
 			typeName: 'Query',
