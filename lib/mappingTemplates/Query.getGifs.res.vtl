@@ -1,0 +1,9 @@
+#set($gifData = $util.parseJson($ctx.result.body).data)
+#set($urls = [])
+
+#foreach($item in $gifData)
+
+  $util.qr($urls.add($item.images.fixed_width.url))
+#end
+
+$util.toJson({"data": $urls})

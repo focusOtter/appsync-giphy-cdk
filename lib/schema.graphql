@@ -4,6 +4,6 @@ type Schema {
 
 type Query {
 	getSecret(secretName: String!): String! @aws_api_key
-	getGifs(secretName: String!, categoryName: String!, limit: Int): [AWS_URL]!
+	getGifs(secretName: String!, categoryName: String!, limit: Int): [AWSURL]!
 		@aws_api_key
 }

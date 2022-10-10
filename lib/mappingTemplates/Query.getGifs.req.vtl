@@ -1,0 +1,16 @@
+#set($secret = $ctx.prev.result.SecretId)
+#set($category = $ctx.stash.category)
+#set($limit = $ctx.stash.limit)
+
+{
+  "method": "GET",
+  "version": "2018-05-29",
+  "resourcePath": "/v1/gifs/search",
+  "params": {
+    "query": {
+      "api_key": "$secret",
+      "q": "$category",
+      "limit": "$limit"
+    }
+  }
+}

@@ -31,22 +31,6 @@ export class APIStack extends cdk.Stack {
 			xrayEnabled: true,
 		})
 
-		const allowGetSecretName = new PolicyDocument({
-			statements: [
-				new PolicyStatement({
-					resources: [api.arn],
-					actions: ['secretsmanager:GetSecretValue'],
-				}),
-			],
-		})
-
-		new Role(this, 'appsyncWithSSMGet', {
-			assumedBy: new ServicePrincipal('appsync.amazonaws.com'),
-			inlinePolicies: {
-				allowGetSecretName: allowGetSecretName,
-			},
-		})
-
 		const ssmDS = api.addHttpDataSource(
 			'toSecretManager',
 			'https://secretsmanager.us-east-1.amazonaws.com',
@@ -57,6 +41,8 @@ export class APIStack extends cdk.Stack {
 				},
 			}
 		)
+
+		const giphyDS = api.addHttpDataSource('toGiphyAPI', 'https://api.giphy.com')
 
 		ssmDS.grantPrincipal.addToPrincipalPolicy(
 			new PolicyStatement({
@@ -83,14 +69,30 @@ export class APIStack extends cdk.Stack {
 			}
 		)
 
+		const getGifsFunction = new appsync.AppsyncFunction(
+			this,
+			'getGifsFromGiphy',
+			{
+				api,
+				dataSource: giphyDS,
+				name: 'getGifsFromGiphy',
+				requestMappingTemplate: appsync.MappingTemplate.fromFile(
+					path.join(__dirname, 'mappingTemplates/Query.getGifs.req.vtl')
+				),
+				responseMappingTemplate: appsync.MappingTemplate.fromFile(
+					path.join(__dirname, 'mappingTemplates/Query.getGifs.res.vtl')
+				),
+			}
+		)
+
 		const myPipelineResolver = new appsync.Resolver(this, 'mySecretPipeline', {
 			api,
 			typeName: 'Query',
-			fieldName: 'getSecret',
+			fieldName: 'getGifs',
 			requestMappingTemplate: appsync.MappingTemplate.fromFile(
 				path.join(__dirname, 'mappingTemplates/Pipeline.Before.req.vtl')
 			),
-			pipelineConfig: [appSyncFunction],
+			pipelineConfig: [appSyncFunction, getGifsFunction],
 			responseMappingTemplate: appsync.MappingTemplate.fromFile(
 				path.join(__dirname, 'mappingTemplates/Pipeline.After.res.vtl')
 			),
